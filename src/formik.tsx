@@ -200,7 +200,11 @@ export interface FormikConfig<Values> extends FormikSharedConfig {
   /**
    * Submission handler
    */
-  onSubmit: (values: Values, formikActions: FormikActions<Values>) => void;
+  onSubmit: (
+    values: Values,
+    formikActions: FormikActions<Values>,
+    submitParams: any
+  ) => void;
 
   /**
    * Form component to render
@@ -471,7 +475,7 @@ export class Formik<ExtraProps = {}, Values = object> extends React.Component<
     this.submitForm();
   };
 
-  submitForm = () => {
+  submitForm = (submitParams: any = null) => {
     // Recursively set all values to `true`.
     this.setState({
       touched: setNestedObjectValues<FormikTouched<Values>>(
@@ -488,7 +492,7 @@ export class Formik<ExtraProps = {}, Values = object> extends React.Component<
         (maybePromisedErrors as Promise<any>).then(
           () => {
             this.setState({ errors: {} });
-            this.executeSubmit();
+            this.executeSubmit(submitParams);
           },
           errors => this.setState({ errors, isSubmitting: false })
         );
@@ -502,18 +506,24 @@ export class Formik<ExtraProps = {}, Values = object> extends React.Component<
 
         // only submit if there are no errors
         if (isValid) {
-          this.executeSubmit();
+          this.executeSubmit(submitParams);
         }
       }
     } else if (this.props.validationSchema) {
-      this.runValidationSchema(this.state.values, this.executeSubmit);
+      this.runValidationSchema(this.state.values, () =>
+        this.executeSubmit(submitParams)
+      );
     } else {
-      this.executeSubmit();
+      this.executeSubmit(submitParams);
     }
   };
 
-  executeSubmit = () => {
-    this.props.onSubmit(this.state.values, this.getFormikActions());
+  executeSubmit = (submitParams: any = null) => {
+    this.props.onSubmit(
+      this.state.values,
+      this.getFormikActions(),
+      submitParams
+    );
   };
 
   handleBlur = (e: any) => {
