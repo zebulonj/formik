@@ -200,11 +200,7 @@ export interface FormikConfig<Values> extends FormikSharedConfig {
   /**
    * Submission handler
    */
-  onSubmit: (
-    values: Values,
-    formikActions: FormikActions<Values>,
-    submitParams: any
-  ) => void;
+  onSubmit: (values: Values, formikProps: any, submitParams: any) => void;
 
   /**
    * Form component to render
@@ -489,25 +485,20 @@ export class Formik<ExtraProps = {}, Values = object> extends React.Component<
       const maybePromisedErrors =
         (this.props.validate as any)(this.state.values) || {};
       if (isPromise(maybePromisedErrors)) {
-        (maybePromisedErrors as Promise<any>).then(
-          () => {
-            this.setState({ errors: {} });
-            this.executeSubmit(submitParams);
-          },
-          errors => this.setState({ errors, isSubmitting: false })
-        );
+        (maybePromisedErrors as Promise<any>)
+          .then(() => ({}), errors => errors)
+          .then(errors =>
+            this.setState({ errors }, () => {
+              this.executeSubmit(submitParams);
+            })
+          );
         return;
       } else {
-        const isValid = Object.keys(maybePromisedErrors).length === 0;
         this.setState({
           errors: maybePromisedErrors as FormikErrors<Values>,
-          isSubmitting: isValid,
         });
 
-        // only submit if there are no errors
-        if (isValid) {
-          this.executeSubmit(submitParams);
-        }
+        this.executeSubmit(submitParams);
       }
     } else if (this.props.validationSchema) {
       this.runValidationSchema(this.state.values, () =>
@@ -521,7 +512,11 @@ export class Formik<ExtraProps = {}, Values = object> extends React.Component<
   executeSubmit = (submitParams: any = null) => {
     this.props.onSubmit(
       this.state.values,
-      this.getFormikActions(),
+      {
+        ...this.state,
+        ...this.getFormikActions(),
+        ...this.getFormikComputedProps(),
+      },
       submitParams
     );
   };
